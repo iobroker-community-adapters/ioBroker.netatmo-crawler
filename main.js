@@ -328,7 +328,7 @@ class NetatmoCrawler extends utils.Adapter {
                         url: 'https://auth.netatmo.com/weathermap/token',
                         headers: {
                             'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8,en-US;q=0.7',
-                            'User-Agent': 'Mozilla/5.0'
+                            'User-Agent': 'Mozilla/5.0',
                         },
                         rejectUnauthorized: false,
                     },
