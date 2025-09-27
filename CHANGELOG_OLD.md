@@ -1,4 +1,7 @@
 # Older Changelogs
+## 0.6.3
+* (Bart19) updates dependencies
+
 ## 0.6.2
 * (Bart19) updates dependencies
 

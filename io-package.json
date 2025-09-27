@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "netatmo-crawler",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "news": {
+      "1.1.0": {
+        "en": "Adapter requires node.js 20, js-controller 6.0.11 and admin 7.6.17 now.\nMissing headers have been added [#96]\nDependencies have been updated.",
+        "de": "Adapter erfordert jetzt node.js 20, js-controller 6.0.11 und admin 7.6.17.\nFehlende Header wurden hinzugefügt [#96]\nAbhängigkeiten wurden aktualisiert.",
+        "ru": "Адаптер требует node.js 20, js-контроллер 6.0.11 и админ 7.6.17.\nОтсутствующие заголовки добавлены [#96]\nЗависимости были обновлены.",
+        "pt": "O adaptador requer node.js 20, js-controller 6.0.11 e admin 7.6.17 agora.\nForam adicionados cabeçalhos em falta [# 96]\nAs dependências foram atualizadas.",
+        "nl": "Adapter vereist node.js 20, js-controller 6.0.11 en admin 7.6.17 nu.\nOntbrekende headers zijn toegevoegd [#96]\nAfhankelijkheden zijn bijgewerkt.",
+        "fr": "L'adaptateur nécessite node.js 20, js-controller 6.0.11 et admin 7.6.17.\nDes en-têtes manquants ont été ajoutés [#96]\nLes dépendances ont été actualisées.",
+        "it": "Adattatore richiede node.js 20, js-controller 6.0.11 e admin 7.6.17 ora.\nLe intestazioni mancanti sono state aggiunte [#96]\nLe dipendenze sono state aggiornate.",
+        "es": "Adaptador requiere node.js 20, js-controller 6.0.11 y admin 7.6.17 ahora.\nSe han añadido cabeceras desaparecidas [#96]\nSe han actualizado las dependencias.",
+        "pl": "Adapter wymaga node.js 20, kontroler js- 6.0.11 i admin 7.6.17 teraz.\nBrakujące nagłówki zostały dodane [# 96]\nZaktualizowano zależność.",
+        "uk": "Адаптер вимагає node.js 20, js-controller 6.0.11 і admin 7.6.17 тепер.\n[#96]\nОновлено залежність.",
+        "zh-cn": "适配器需要节点20,js控制器6.0.11和现在的admin 7.6.17.\n已添加缺失信头 [# 96]\n附属关系已经更新."
+      },
       "1.0.0": {
         "en": "A problem handling urls and authentication has been fixed.\nAdapter has been migrated into iobroker-community-adapters organisation.\nAdapter requires node.js 20, js-controller 6.0.11 and admin 7.4.10 now.\nDependencies have been updated.",
         "de": "Ein Problem beim Berabieten der Urls und bei der Authentifizierung wurde behoben.\nAdapter wurde in die iobroker-community-adapters Organisation migriert.\nAdapter erfordert jetzt node.js 20, js-controller 6.0.11 und admin 7.4.10.\nAbhängigkeiten wurden aktualisiert.",

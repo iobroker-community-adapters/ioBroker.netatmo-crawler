@@ -117,7 +117,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 1.1.0 (2025-09-27)
 * (mcm1957) Adapter requires node.js 20, js-controller 6.0.11 and admin 7.6.17 now.
 * (Bart1909) Missing headers have been added [#96]
 * (mcm1957) Dependencies have been updated.
@@ -136,9 +136,6 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 
 ### 0.7.0
 * (Bart19) saves states as read-only (#23)
-
-### 0.6.3
-* (Bart19) updates dependencies
 
 ## License
 
