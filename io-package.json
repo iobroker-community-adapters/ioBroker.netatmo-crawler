@@ -16,19 +16,6 @@
         "uk": "Виправлено проблему з використанням ви URL-адрес та автентифікації.\nПерехідник був мігрований в організацію iobroker-community-adapters.\nАдаптер вимагає node.js 20, js-controller 6.0.11 і admin 7.4.10 тепер.\nОновлено залежність.",
         "zh-cn": "一个处理urls和认证的问题已经解决 .\n适应者已迁移到职业经纪人-社区适应者组织.\n适配器需要节点.js 20,js控制器 6.0.11和admin 7.4.10 现在.\n附属物已经更新."
       },
-      "1.0.0-alpha.0": {
-        "en": "Adapter has been migrated into iobroker-community-adapters organisation.\nAdapter requires node.js 20, js-controller 6.0.11 and dmin 7.4.10 now.\nDependencies have been updated.",
-        "de": "Adapter wurde in die iobroker-community-Adapter-Organisation migriert.\nAdapter erfordert jetzt node.js 20, js-controller 6.0.11 und dmin 7.4.10.\nAbhängigkeiten wurden aktualisiert.",
-        "ru": "Адаптер был перемещен в организацию адаптации сообщества iobroker.\nАдаптер требует node.js 20, js-контроллер 6.0.11 и dmin 7.4.10.\nЗависимости были обновлены.",
-        "pt": "O adaptador foi migrado para a organização de adaptadores da comunidade.\nO adaptador requer nod.js 20, js-controller 6.0.11 e dmin 7.4.10 agora.\nAs dependências foram atualizadas.",
-        "nl": "Adapter is gemigreerd naar iobroker-community-adapters organisatie.\nAdapter vereist node.js 20, js-controller 6.0.11 en dmin 7.4.10 nu.\nAfhankelijkheden zijn bijgewerkt.",
-        "fr": "L'adaptateur a été transféré dans l'organisation iobroker-community-adapters.\nL'adaptateur nécessite node.js 20, js-controller 6.0.11 et dmin 7.4.10 maintenant.\nLes dépendances ont été actualisées.",
-        "it": "L'adattatore è stato migrato nell'organizzazione degli adattatori della comunità iobroker.\nAdattatore richiede node.js 20, js-controller 6.0.11 e dmin 7.4.10 ora.\nLe dipendenze sono state aggiornate.",
-        "es": "El adaptador ha sido migrado en la organización de ibroker-community-adapters.\nAdaptador requiere node.js 20, js-controller 6.0.11 y dmin 7.4.10 ahora.\nSe han actualizado las dependencias.",
-        "pl": "Adapter został przeniesiony do organizacji adapterów społeczności iobrokerowej.\nAdapter wymaga node.js 20, kontroler js- 6.0.11 i dmin 7.4.10 teraz.\nZaktualizowano zależność.",
-        "uk": "Перехідник був мігрований в організацію iobroker-community-adapters.\nАдаптер вимагає node.js 20, js-controller 6.0.11 і dmin 7.4.10 тепер.\nОновлено залежність.",
-        "zh-cn": "适应者已迁移到职业经纪人-社区适应者组织.\n适配器需要节点.js 20,js控制器 6.0.11和dmin 7.4.10 现在.\n附属物已经更新."
-      },
       "0.6.0": {
         "en": "saves states with acknowledgement & updates dependencies and documentation",
         "de": "speichert Zustände mit Bestätigung und aktualisiert Abhängigkeiten und Dokumentation",
@@ -161,7 +148,7 @@
     ],
     "globalDependencies": [
       {
-        "admin": ">=7.4.10"
+        "admin": ">=7.6.17"
       }
     ]
   },
