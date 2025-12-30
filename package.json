@@ -2,10 +2,7 @@
   "name": "iobroker.netatmo-crawler",
   "version": "1.1.0",
   "description": "Crawls information from public netatmo stations",
-  "author": {
-    "name": "Bart19",
-    "email": "webmaster@bart19.de"
-  },
+  "author": "Bart19 <webmaster@bart19.de>",
   "contributors": [
     "iobroker-community-adapters <iobroker-community-adapters@gmx.de>",
     "mcm1957 <iobroker-community-adapters@gmx.de>"
