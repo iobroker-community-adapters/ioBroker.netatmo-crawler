@@ -8,7 +8,7 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 
-const url = require('url');
+const url = require('node:url');
 const moment = require('moment');
 const request = require('request');
 // const { Adapter } = require('@iobroker/adapter-core');
@@ -17,7 +17,7 @@ let logger;
 let myAdapter;
 
 // Load your modules here, e.g.:
-// const fs = require('fs');
+// const fs = require('node:fs');
 
 class NetatmoCrawler extends utils.Adapter {
     /**
