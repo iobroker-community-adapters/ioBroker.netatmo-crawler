@@ -119,6 +119,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 -->
 
 ### **WORK IN PROGRESS**
+- (copilot) Adapter requires node.js >= 22 now
 - (copilot) Adapter requires admin >= 7.7.22 now
 
 ### 1.1.0 (2025-09-27)
