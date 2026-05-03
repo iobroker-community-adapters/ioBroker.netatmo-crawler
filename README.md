@@ -141,6 +141,8 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 ### 0.7.0
 * (Bart19) saves states as read-only (#23)
 
+[Older changelogs can be found there](CHANGELOG_OLD.md)
+
 ## License
 
 MIT License
