@@ -1,8 +1,21 @@
 {
   "common": {
     "name": "netatmo-crawler",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "news": {
+      "1.2.0": {
+        "en": "Adapter requires node.js >= 22 now\nAdapter requires admin >= 7.7.22 now\nDependencies have been updated.",
+        "de": "Adapter benötigt node.js >= 22 jetzt\nAdapter benötigt admin >= 7.7.22 jetzt\nAbhängigkeiten wurden aktualisiert.",
+        "ru": "Адаптер требует node.js >= 22 сейчас\nАдаптер требует администратора >= 7.7.22\nЗависимости были обновлены.",
+        "pt": "Adaptador requer nod.js >= 22 agora\nAdaptador requer admin >= 7.7.22 agora\nAs dependências foram atualizadas.",
+        "nl": "Voor de adapter zijn node.js < 22 nu nodig\nAdapter vereist admin < 7.7.22 nu\nAfhankelijkheden zijn bijgewerkt.",
+        "fr": "Adaptateur nécessite node.js >= 22 maintenant\nAdaptateur nécessite admin >= 7.7.22 maintenant\nLes dépendances ont été actualisées.",
+        "it": "Adattatore richiede node.js >= 22 ora\nAdattatore richiede admin >= 7.7.22 ora\nLe dipendenze sono state aggiornate.",
+        "es": "Adaptador requiere node.js ю= 22 ahora\nEl adaptador requiere administrador= 7.7.22 ahora\nSe han actualizado las dependencias.",
+        "pl": "Adapter wymaga node.js > = 22\nAdapter wymaga admin > = 7.7.22\nZaktualizowano zależność.",
+        "uk": "Адаптер вимагає node.js >= 22 тепер\nАдаптер вимагає адмін >= 7.7.22 тепер\nОновлено залежність.",
+        "zh-cn": "适配器需要节点.js 现在22\n适任者需要管理员 \\ 7.7.22 现在\n附属关系已经更新."
+      },
       "1.1.0": {
         "en": "Adapter requires node.js 20, js-controller 6.0.11 and admin 7.6.17 now.\nMissing headers have been added [#96]\nDependencies have been updated.",
         "de": "Adapter erfordert jetzt node.js 20, js-controller 6.0.11 und admin 7.6.17.\nFehlende Header wurden hinzugefügt [#96]\nAbhängigkeiten wurden aktualisiert.",
@@ -80,19 +93,6 @@
         "pl": "Usunięto stare wiadomości",
         "zh-cn": "删除了旧消息",
         "uk": "Видалив старі новини"
-      },
-      "0.8.1": {
-        "en": "Adds additional 'rain_lastHour' state as 'rain' state is now real time value",
-        "de": "Fügt den zusätzlichen Status „rain_lastHour“ hinzu, da der Status „rain“ jetzt ein Echtzeitwert ist",
-        "ru": "Добавляет дополнительное состояние «rain_lastHour», так как состояние «дождь» теперь является значением в реальном времени.",
-        "pt": "Adiciona o estado 'rain_lastHour' adicional, pois o estado 'rain' agora é um valor em tempo real",
-        "nl": "Voegt een extra 'rain_lastHour'-status toe omdat de 'rain'-status nu een realtime waarde is",
-        "fr": "Ajoute un état supplémentaire 'rain_lastHour' car l'état 'rain' est maintenant une valeur en temps réel",
-        "it": "Aggiunge un ulteriore stato \"rain_lastHour\" poiché lo stato \"pioggia\" è ora un valore in tempo reale",
-        "es": "Agrega el estado adicional 'rain_lastHour' ya que el estado 'lluvia' ahora es un valor en tiempo real",
-        "pl": "Dodaje dodatkowy stan „rain_lastHour”, ponieważ stan „deszczu” jest teraz wartością w czasie rzeczywistym",
-        "zh-cn": "添加额外的“rain_lastHour”状态，因为“rain”状态现在是实时值",
-        "uk": "Додає додатковий стан \"RAIN_LASTHOUR\" як \"дощ\" тепер є цінністю в режимі реального часу"
       }
     },
     "titleLang": {

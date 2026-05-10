@@ -1,4 +1,9 @@
 # Older Changelogs
+## 0.7.0
+* (Bart19) saves states as read-only (#23)
+
+[Older changelogs can be found there](CHANGELOG_OLD.md)
+
 ## 0.6.3
 * (Bart19) updates dependencies
 

@@ -117,8 +117,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-
-### **WORK IN PROGRESS**
+### 1.2.0 (2026-05-10)
 - (copilot) Adapter requires node.js >= 22 now
 - (copilot) Adapter requires admin >= 7.7.22 now
 - (mcm1957) Dependencies have been updated.
@@ -139,11 +138,6 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 
 ### 0.7.1
 * (Bart19) removed old news (#17)
-
-### 0.7.0
-* (Bart19) saves states as read-only (#23)
-
-[Older changelogs can be found there](CHANGELOG_OLD.md)
 
 ## License
 
