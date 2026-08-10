@@ -11,6 +11,7 @@ const utils = require('@iobroker/adapter-core');
 const url = require('node:url');
 const moment = require('moment');
 const request = require('request');
+const { REQUEST_TIMEOUT_MS, isNetworkError } = require('./lib/netatmo-request');
 // const { Adapter } = require('@iobroker/adapter-core');
 
 let logger;
@@ -54,7 +55,7 @@ class NetatmoCrawler extends utils.Adapter {
         }
 
         try {
-            let token = await this.getAuthorizationToken(this);
+            const token = await this.getAuthorizationToken(this);
             for (const [counter, stationUrl] of stationUrls.entries()) {
                 this.log.debug(`Working with stationUrl: ${stationUrl}`);
                 if (stationUrl) {
@@ -76,9 +77,14 @@ class NetatmoCrawler extends utils.Adapter {
             //         sentryInstance.getSentryObject().captureException(e);
             //     }
             // }
-            this.log.error(`Error while running Netatmo Crawler. Error Message:${e}`);
+            if (isNetworkError(e)) {
+                this.log.warn(`Could not retrieve new Netatmo data due to a network problem: ${e.message}`);
+            } else {
+                this.log.error(`Error while running Netatmo Crawler. Error Message:${e}`);
+            }
             this.log.debug('all done, exiting');
-            this.terminate ? this.terminate(15) : process.exit(15);
+            const exitCode = isNetworkError(e) ? 0 : 15;
+            this.terminate ? this.terminate('Netatmo data retrieval finished', exitCode) : process.exit(exitCode);
         }
     }
 
@@ -331,17 +337,18 @@ class NetatmoCrawler extends utils.Adapter {
                             'User-Agent': 'Mozilla/5.0',
                         },
                         rejectUnauthorized: false,
+                        timeout: REQUEST_TIMEOUT_MS,
                     },
 
                     async function (error, response, body) {
                         if (error) {
-                            rej(error);
+                            return rej(error);
                         }
                         //logger.debug('Body:' + body);
 
                         if (!body) {
                             await adapter.saveState(tokenState, null);
-                            rej('No body for authorization token found.');
+                            return rej('No body for authorization token found.');
                         }
                         try {
                             logger.debug(`Body:${body}`);
@@ -376,10 +383,11 @@ class NetatmoCrawler extends utils.Adapter {
                     json: {
                         device_id: stationId,
                     },
+                    timeout: REQUEST_TIMEOUT_MS,
                 },
                 async function (error, response, body) {
                     if (error) {
-                        rej(error);
+                        return rej(error);
                     }
                     if (body && body.body) {
                         logger.debug(`Body:${JSON.stringify(body.body)}`);
@@ -465,16 +473,17 @@ class NetatmoCrawler extends utils.Adapter {
                         Authorization: token,
                     },
                     json: inputObj,
+                    timeout: REQUEST_TIMEOUT_MS,
                 },
                 async function (error, response, body) {
                     if (error) {
-                        rej(error);
+                        return rej(error);
                     }
                     logger.debug(`Body Rain_Today:${JSON.stringify(body)}`);
                     if (body && body.body) {
                         if (!body.body[0] || !body.body[0].value) {
                             logger.debug(`No rain today value for Station ${stationId}`);
-                            res('');
+                            return res('');
                         }
                         //console.log('Body:' + JSON.stringify(responseBody, null, 4));
                         try {
@@ -521,10 +530,11 @@ class NetatmoCrawler extends utils.Adapter {
                         Authorization: token,
                     },
                     json: inputObj,
+                    timeout: REQUEST_TIMEOUT_MS,
                 },
                 async function (error, response, body) {
                     if (error) {
-                        rej(error);
+                        return rej(error);
                     }
                     if (body && body.body) {
                         logger.debug(`Body Rain_Yesterday:${JSON.stringify(body.body)}`);
@@ -574,10 +584,11 @@ class NetatmoCrawler extends utils.Adapter {
                         Authorization: token,
                     },
                     json: inputObj,
+                    timeout: REQUEST_TIMEOUT_MS,
                 },
                 async function (error, response, body) {
                     if (error) {
-                        rej(error);
+                        return rej(error);
                     }
                     if (body && body.body) {
                         logger.debug(`Body Rain_LastHour:${JSON.stringify(body.body)}`);
