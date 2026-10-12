@@ -173,6 +173,14 @@ class NetatmoCrawler extends utils.Adapter {
                     if (measure === 'windangle') {
                         await this.saveMeasure(
                             id,
+                            'windangleDegrees',
+                            this.getMeasureValue(stationData.measures, measure),
+                        );
+                        if (measureLastUpdated) {
+                            await this.saveTimestamp(id, 'windangleDegrees', measureLastUpdated);
+                        }
+                        await this.saveMeasure(
+                            id,
                             measure,
                             this.getWindrichtungsName(this.getMeasureValue(stationData.measures, measure)),
                         );
@@ -274,6 +282,9 @@ class NetatmoCrawler extends utils.Adapter {
                     break;
                 case 'windangle':
                     await this.createOwnState(stateName, null, 'string', 'weather.direction.wind ');
+                    break;
+                case 'windangleDegrees':
+                    await this.createOwnState(stateName, '°', 'number', 'value.direction.wind');
                     break;
                 case 'windstrength':
                     await this.createOwnState(stateName, 'km/h', 'number', 'value.speed.wind');

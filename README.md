@@ -100,6 +100,8 @@ function heat(temperature, humidity) {
 
 Wind
 ----
+`stationData.<station>.windangleDegrees` contains the numeric wind direction in degrees; `lastUpdated.windangleDegrees` contains its measurement timestamp. The existing `windangle` compass text remains unchanged. The Netatmo value `-1` is retained for calm conditions, matching the existing `calm` text.
+
 Wind speed is a measure from air moving from high to low pressure, usually due to changes in temperature.
 The gust strength is the highest value of wind, measured in a short time (something like three seconds).
 You should do a script for your awning or for the Zambretti method (look above).
@@ -118,8 +120,9 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 	### **WORK IN PROGRESS**
 -->
 ### **WORK IN PROGRESS**
+- (xXBJXx) Added numeric wind direction and its measurement timestamp while retaining the existing compass direction ([#43](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/43)).
 - (xXBJXx) Migrated settings to jsonConfig, preserved existing configuration and translations, and added spacing below the Admin toolbar ([#174](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/174), [#213](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/213); supersedes [#221](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/221)).
-- (xXBJXx) Fixed missing station data when optional location fields are absent ([#198](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/198), [#94](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/94); related: [#84](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/84)).
+- (xXBJXx) Fixed missing station data when optional location fields are absent ([#198](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/198), [#94](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/94), [#84](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/84)).
 - (xXBJXx) Fixed token renewal, request timeouts and cancellation when disabling the instance.
 - (xXBJXx) Cancelled active requests when station settings change, preventing overlapping scheduled runs after saving.
 - (xXBJXx) Handled expected network failures as warnings with exit code 0, incorporating [#191](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/191) ([#57](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/57)).

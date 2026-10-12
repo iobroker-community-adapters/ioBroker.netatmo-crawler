@@ -87,6 +87,45 @@ function success(o) {
 }
 
 describe('Netatmo regression tests', () => {
+    for (const [degrees, direction] of [
+        [0, 'N'],
+        [73, 'E'],
+        [180, 'S'],
+        [359, 'N'],
+        [-1, 'calm'],
+    ]) {
+        it(`preserves numeric wind direction ${degrees} alongside its existing text and timestamp`, async () => {
+            const station = {
+                _id: 'wind-test',
+                measures: { wind: { type: ['windangle'], res: { 1791818443: [degrees] } } },
+            };
+            const t = setup(() => ({ body: [station] }), [station]);
+            await t.adapter.onReady();
+            assert.equal(t.states.get('stationData.1.windangleDegrees'), degrees);
+            assert.equal(t.states.get('stationData.1.windangle'), direction);
+            assert.equal(t.states.get('stationData.1.lastUpdated.windangleDegrees'), 1791818443000);
+            const obj = t.objects.get('stationData.1.windangleDegrees');
+            assert.equal(obj.common.type, 'number');
+            assert.equal(obj.common.unit, '°');
+            assert.equal(obj.common.role, 'value.direction.wind');
+            assert.equal(obj.common.write, false);
+        });
+    }
+    it('does not invent wind direction values or timestamps for invalid or absent readings', async () => {
+        for (const value of [undefined, null, NaN, Infinity, '90']) {
+            const station = {
+                _id: 'wind-test',
+                measures: { wind: { type: ['windangle'], res: { 1791818443: [value] } } },
+            };
+            const t = setup(() => ({ body: [station] }), [station]);
+            await t.adapter.onReady();
+            assert(!t.states.has('stationData.1.windangleDegrees'));
+            assert(!t.states.has('stationData.1.lastUpdated.windangleDegrees'));
+        }
+        const t = setup(success, [stations[0]]);
+        await t.adapter.onReady();
+        assert(!t.objects.has('stationData.1.windangleDegrees'));
+    });
     for (const code of [
         'ECONNABORTED',
         'ECONNREFUSED',
@@ -158,7 +197,10 @@ describe('Netatmo regression tests', () => {
         assert.equal(t.requests.length, 0);
         assert.match(t.adapter.exit.message, /Instance disabled/);
     });
-    for (const change of [{ stationUrls: 'https://weathermap.netatmo.com/?stationid=new' }, { stationNameType: 'id' }]) {
+    for (const change of [
+        { stationUrls: 'https://weathermap.netatmo.com/?stationid=new' },
+        { stationNameType: 'id' },
+    ]) {
         it(`cancels an active run when ${Object.keys(change)[0]} changes and permits the replacement run`, async () => {
             const t = setup(() => 'hang');
             const run = t.adapter.onReady();
