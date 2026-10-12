@@ -122,6 +122,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 - (xXBJXx) Fixed token renewal, request timeouts and cancellation when disabling the instance.
 - (xXBJXx) Handled expected network failures as warnings with exit code 0, incorporating [#191](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/191) ([#57](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/57)).
 - (xXBJXx) Preserved weather readings when rain history is unavailable.
+- (xXBJXx) Replaced deprecated request and URL handling with native Node.js APIs, updated adapter-core, and used adapter timers and termination for compact-mode safety ([#213](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/213)).
 
 ### 1.2.0 (2026-05-10)
 - (copilot) Adapter requires node.js >= 22 now

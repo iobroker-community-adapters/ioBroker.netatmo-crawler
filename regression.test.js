@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const moment = require('moment');
-const { RequestClient, describeError } = require('./lib/request-client');
+const { RequestClient, describeError, isNetworkError } = require('./lib/request-client');
 const stations = require('./test/fixtures/stations.json');
 const source = fs.readFileSync(require('node:path').join(__dirname, 'main.js'), 'utf8');
 
@@ -43,6 +43,12 @@ function setup(responder = () => ({ body: [] }), fixtures = stations) {
             );
         }
         on() {}
+        setTimeout(callback, ms) {
+            return setTimeout(callback, ms);
+        }
+        clearTimeout(timer) {
+            clearTimeout(timer);
+        }
         async subscribeForeignObjectsAsync() {}
         async getForeignObjectAsync() {
             return { common: { enabled: true } };
@@ -67,7 +73,7 @@ function setup(responder = () => ({ body: [] }), fixtures = stations) {
         require(name) {
             if (name === '@iobroker/adapter-core') return { Adapter };
             if (name === 'moment') return () => moment.utc('2026-10-12T12:00:00Z');
-            if (name === 'request') return transport;
+            if (name === './lib/http-transport') return transport;
             return require(name);
         },
     };
@@ -316,6 +322,47 @@ describe('Netatmo regression tests', () => {
 });
 
 describe('Request lifecycle', () => {
+    it('uses and clears the injected adapter timers for requests and retry waits', async () => {
+        const active = new Set();
+        const timers = {
+            setTimeout(cb, ms) {
+                const timer = setTimeout(cb, ms);
+                active.add(timer);
+                return timer;
+            },
+            clearTimeout(timer) {
+                active.delete(timer);
+                clearTimeout(timer);
+            },
+        };
+        const c = new RequestClient(
+            () => ({ abort() {} }),
+            30000,
+            (cb, ms) => {
+                const timer = timers.setTimeout(cb, ms);
+                return () => timers.clearTimeout(timer);
+            },
+        );
+        const pending = [assert.rejects(c.send({}), /stopping/), assert.rejects(c.sleep(1000), /stopping/)];
+        assert.equal(active.size, 2);
+        c.stop();
+        await Promise.all(pending);
+        assert.equal(active.size, 0);
+    });
+    it('recognizes fetch network causes and retains their diagnostic codes', () => {
+        for (const code of [
+            'ECONNREFUSED',
+            'UND_ERR_CONNECT_TIMEOUT',
+            'UND_ERR_HEADERS_TIMEOUT',
+            'UND_ERR_BODY_TIMEOUT',
+            'UND_ERR_SOCKET',
+        ]) {
+            const error = new TypeError('fetch failed', { cause: Object.assign(new Error('connection'), { code }) });
+            assert(isNetworkError(error));
+            assert(describeError(error).includes(code));
+        }
+        assert(!isNetworkError(new TypeError('fetch failed', { cause: new SyntaxError('invalid') })));
+    });
     it('sets 30 seconds and clears deadlines on success', async () => {
         let options;
         const c = new RequestClient((o, cb) => {
@@ -379,6 +426,76 @@ describe('Real HTTP transport on localhost', () => {
         }
     }
 
+    it('follows token endpoint redirects and preserves the JSON token response', async () => {
+        await serve(
+            (req, res) => {
+                if (req.url === '/') {
+                    res.writeHead(302, { Location: '/token' });
+                    res.end();
+                } else {
+                    res.end(JSON.stringify({ body: 'synthetic-token' }));
+                }
+            },
+            async url => {
+                const client = new RequestClient(require('./lib/http-transport'));
+                const response = await client.send({ url });
+                assert.equal(JSON.parse(response.body).body, 'synthetic-token');
+            },
+        );
+    });
+    it('returns non-JSON HTTP 401 responses for token refresh', async () => {
+        await serve(
+            (req, res) => {
+                res.writeHead(401);
+                res.end('Unauthorized');
+            },
+            async url => {
+                const client = new RequestClient(require('./lib/http-transport'));
+                const response = await client.send({ url, method: 'POST', json: {} }, true);
+                assert.equal(response.statusCode, 401);
+                assert.equal(response.body, 'Unauthorized');
+            },
+        );
+    });
+    it('rejects HTTP errors and malformed successful JSON without leaking pending requests', async () => {
+        for (const status of [200, 503]) {
+            await serve(
+                (req, res) => {
+                    res.writeHead(status);
+                    res.end('not JSON');
+                },
+                async url => {
+                    const client = new RequestClient(require('./lib/http-transport'));
+                    await assert.rejects(
+                        client.send({ url, method: 'POST', json: {} }),
+                        status === 200 ? /Invalid JSON/ : /HTTP 503/,
+                    );
+                    assert.equal(client.pending.size, 0);
+                },
+            );
+        }
+    });
+    it('bounds a response whose body stalls after the headers', async () => {
+        await serve(
+            (req, res) => {
+                res.writeHead(200);
+                res.write('{');
+            },
+            async url => {
+                const client = new RequestClient(require('./lib/http-transport'), 50);
+                await assert.rejects(client.send({ url, method: 'POST', json: {} }), /timed out/);
+                assert.equal(client.pending.size, 0);
+            },
+        );
+    });
+    it('classifies real connection failures from fetch as network errors', async () => {
+        const server = require('node:net').createServer();
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        const port = server.address().port;
+        await new Promise(resolve => server.close(resolve));
+        const client = new RequestClient(require('./lib/http-transport'));
+        await assert.rejects(client.send({ url: `http://127.0.0.1:${port}` }), isNetworkError);
+    });
     it('sends authenticated POST JSON and parses a real response', async () => {
         let received;
         await serve(
@@ -394,7 +511,7 @@ describe('Real HTTP transport on localhost', () => {
                 });
             },
             async url => {
-                const client = new RequestClient(require('request'));
+                const client = new RequestClient(require('./lib/http-transport'));
                 const response = await client.send({
                     url,
                     method: 'POST',
@@ -416,7 +533,7 @@ describe('Real HTTP transport on localhost', () => {
         await serve(
             () => {},
             async url => {
-                const client = new RequestClient(require('request'), 40);
+                const client = new RequestClient(require('./lib/http-transport'), 40);
                 await assert.rejects(client.send({ url }), /timed out|ETIMEDOUT|ESOCKETTIMEDOUT/);
                 assert.equal(client.pending.size, 0);
             },
@@ -431,7 +548,7 @@ describe('Real HTTP transport on localhost', () => {
         await serve(
             () => arrived(),
             async url => {
-                const client = new RequestClient(require('request'));
+                const client = new RequestClient(require('./lib/http-transport'));
                 const pending = assert.rejects(client.send({ url }), /stopping/);
                 await arrival;
                 client.stop();

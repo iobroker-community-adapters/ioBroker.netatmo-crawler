@@ -8,9 +8,9 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 
-const url = require('node:url');
+const { URL } = require('node:url');
 const moment = require('moment');
-const request = require('request');
+const request = require('./lib/http-transport');
 const { RequestClient, describeError, isNetworkError } = require('./lib/request-client');
 // const { Adapter } = require('@iobroker/adapter-core');
 
@@ -26,7 +26,10 @@ class NetatmoCrawler extends utils.Adapter {
             ...options,
             name: 'netatmo-crawler',
         });
-        this.client = new RequestClient(request);
+        this.client = new RequestClient(request, 30000, (callback, ms) => {
+            const timer = this.setTimeout(callback, ms);
+            return () => this.clearTimeout(timer);
+        });
         this.token = null;
         this.tokenRefreshAttempted = false;
         this.on('ready', this.onReady.bind(this));
@@ -77,7 +80,7 @@ class NetatmoCrawler extends utils.Adapter {
             if (failed) {
                 this.log.warn(summary);
             }
-            this.terminate ? this.terminate(summary, 0) : process.exit(0);
+            this.terminate(summary, 0);
         } catch (error) {
             if (this.client.stopped) {
                 return;
@@ -89,9 +92,7 @@ class NetatmoCrawler extends utils.Adapter {
                 this.log.error(`Netatmo run failed: ${describeError(error)}`);
             }
             const exitCode = networkError ? 0 : 15;
-            this.terminate
-                ? this.terminate('Netatmo run failed; no complete update', exitCode)
-                : process.exit(exitCode);
+            this.terminate('Netatmo run failed; no complete update', exitCode);
         }
     }
 
@@ -330,9 +331,7 @@ class NetatmoCrawler extends utils.Adapter {
     }
 
     getStationId(u) {
-        const queryParams = url.parse(u, true).query;
-        const stationId = queryParams['stationid'];
-        return stationId;
+        return new URL(u).searchParams.get('stationid');
     }
 
     async saveState(name, value) {
