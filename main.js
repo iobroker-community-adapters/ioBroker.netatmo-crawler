@@ -8,28 +8,33 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 
-const url = require('node:url');
+const { URL } = require('node:url');
 const moment = require('moment');
-const request = require('request');
+const request = require('./lib/http-transport');
+const { RequestClient, describeError, isNetworkError } = require('./lib/request-client');
 // const { Adapter } = require('@iobroker/adapter-core');
-
-let logger;
-let myAdapter;
 
 // Load your modules here, e.g.:
 // const fs = require('node:fs');
 
 class NetatmoCrawler extends utils.Adapter {
     /**
-     * @param {Partial<utils.AdapterOptions>} [options]
+     * @param {Partial<utils.AdapterOptions>} [options] Adapter startup options.
      */
     constructor(options) {
         super({
             ...options,
             name: 'netatmo-crawler',
         });
+        this.client = new RequestClient(request, 30000, (callback, ms) => {
+            const timer = this.setTimeout(callback, ms);
+            return () => this.clearTimeout(timer);
+        });
+        this.token = null;
+        this.tokenRefreshAttempted = false;
         this.on('ready', this.onReady.bind(this));
         this.on('unload', this.onUnload.bind(this));
+        this.on('objectChange', this.onInstanceChange.bind(this));
     }
 
     /**
@@ -37,10 +42,6 @@ class NetatmoCrawler extends utils.Adapter {
      */
     async onReady() {
         // Initialize your adapter here
-
-        logger = this.log;
-        // eslint-disable-next-line @typescript-eslint/no-this-alias
-        myAdapter = this;
 
         // The adapters config (in the instance object everything under the attribute 'native') is accessible via
         // this.config:
@@ -53,65 +54,96 @@ class NetatmoCrawler extends utils.Adapter {
             this.log.warn(`no valid station urls detected at ${this.config.stationUrls}`);
         }
 
+        let succeeded = 0;
+        let failed = 0;
         try {
-            let token = await this.getAuthorizationToken(this);
+            const instanceId = `system.adapter.${this.namespace}`;
+            await this.subscribeForeignObjectsAsync(instanceId);
+            // Scheduled runs may not receive a stop signal on configuration changes.
+            // Subscribe before reading to cover changes during startup as well.
+            this.onInstanceChange(instanceId, await this.getForeignObjectAsync(instanceId));
+            this.client.checkRunning();
+            const token = stationUrls.length ? await this.getAuthorizationToken() : null;
             for (const [counter, stationUrl] of stationUrls.entries()) {
-                this.log.debug(`Working with stationUrl: ${stationUrl}`);
-                if (stationUrl) {
-                    try {
-                        await this.getStationData(counter + 1, stationUrl, token, this.config.stationNameType);
-                    } catch (e) {
-                        this.log.warn(`Could not work with station ${counter + 1} - Message: ${e}`);
-                    }
+                this.client.checkRunning();
+                try {
+                    await this.getStationData(counter + 1, stationUrl, token, this.config.stationNameType);
+                    succeeded++;
+                } catch (error) {
+                    this.client.checkRunning();
+                    failed++;
+                    this.log.warn(`Could not work with station ${counter + 1}: ${describeError(error)}`);
                 }
             }
-            this.log.debug('all done, exiting');
-            this.terminate
-                ? this.terminate('Everything done. Going to terminate till next schedule', 0)
-                : process.exit(0);
-        } catch (e) {
-            // if (this.supportsFeature && this.supportsFeature('PLUGINS')) {
-            //     const sentryInstance = this.getPluginInstance('sentry');
-            //     if (sentryInstance) {
-            //         sentryInstance.getSentryObject().captureException(e);
-            //     }
-            // }
-            this.log.error(`Error while running Netatmo Crawler. Error Message:${e}`);
-            this.log.debug('all done, exiting');
-            this.terminate ? this.terminate(15) : process.exit(15);
+            this.client.checkRunning();
+            const summary = `Run finished: ${succeeded} station(s) updated, ${failed} failed. Waiting for next schedule.`;
+            if (failed) {
+                this.log.warn(summary);
+            }
+            this.terminate(summary, 0);
+        } catch (error) {
+            if (this.client.stopped) {
+                return;
+            }
+            const networkError = isNetworkError(error);
+            if (networkError) {
+                this.log.warn(`Could not retrieve new Netatmo data due to a network problem: ${describeError(error)}`);
+            } else {
+                this.log.error(`Netatmo run failed: ${describeError(error)}`);
+            }
+            const exitCode = networkError ? 0 : 15;
+            this.terminate('Netatmo run failed; no complete update', exitCode);
         }
     }
 
     /**
-     * Is called when adapter shuts down - callback has to be called under any circumstances!
+     * Stop a scheduled run when disabled, deleted or using outdated station settings.
      *
-     * @param {() => void} callback
+     * @param {string} id Changed object ID.
+     * @param {ioBroker.Object | null | undefined} obj Changed instance configuration.
+     */
+    onInstanceChange(id, obj) {
+        if (id !== `system.adapter.${this.namespace}` || this.client.stopped) {
+            return;
+        }
+        const disabled = !obj || obj.common.enabled === false;
+        const changed =
+            obj?.native &&
+            (obj.native.stationUrls !== this.config.stationUrls ||
+                obj.native.stationNameType !== this.config.stationNameType);
+        if (disabled || changed) {
+            this.client.stop();
+            this.terminate(
+                `${disabled ? 'Instance disabled' : 'Station settings changed'}; pending requests cancelled`,
+                0,
+            );
+        }
+    }
+
+    /**
+     * Cancel requests and retry delays when ioBroker stops the instance.
+     *
+     * @param {() => void} callback ioBroker shutdown completion callback.
      */
     onUnload(callback) {
         try {
-            // Here you must clear all timeouts or intervals that may still be active
-            // clearTimeout(timeout1);
-            // clearTimeout(timeout2);
-            // ...
-            // clearInterval(interval1);
-
-            callback();
-        } catch {
+            this.client.stop();
+        } finally {
             callback();
         }
     }
 
     async getStationData(id, url, token, stationNameType) {
-        logger.debug(`Going to get information for station: ${id}`);
+        this.log.debug(`Going to get information for station: ${id}`);
         let stationid = this.getStationId(url);
         let stationData = await this.getPublicData(stationid, token);
         if (!stationData) {
-            logger.info('Got no station data. Trying again');
+            this.log.info('Got no station data. Trying again');
             await this.sleep(1000);
             stationData = await this.getPublicData(stationid, token);
         }
         if (stationData && stationData.measures) {
-            logger.debug(`Saving station data for station: ${id}`);
+            this.log.debug(`Saving station data for station: ${id}`);
             if (stationNameType === 'id') {
                 id = stationid;
             }
@@ -127,14 +159,26 @@ class NetatmoCrawler extends utils.Adapter {
                 'windstrength',
             ];
 
+            let savedMeasurements = 0;
             for (const measure of measureTypes) {
                 if (this.hasMeasure(stationData.measures, measure)) {
-                    logger.debug(`Saving data for station: ${id} and measure: ${measure}`);
+                    if (this.getMeasureValue(stationData.measures, measure) === null) {
+                        continue;
+                    }
+                    this.log.debug(`Saving data for station: ${id} and measure: ${measure}`);
                     let measureLastUpdated = this.getMeasureTimestamp(stationData.measures, measure);
                     if (measureLastUpdated) {
                         await this.saveTimestamp(id, measure, measureLastUpdated);
                     }
                     if (measure === 'windangle') {
+                        await this.saveMeasure(
+                            id,
+                            'windangleDegrees',
+                            this.getMeasureValue(stationData.measures, measure),
+                        );
+                        if (measureLastUpdated) {
+                            await this.saveTimestamp(id, 'windangleDegrees', measureLastUpdated);
+                        }
                         await this.saveMeasure(
                             id,
                             measure,
@@ -146,44 +190,47 @@ class NetatmoCrawler extends utils.Adapter {
                     } else {
                         await this.saveMeasure(id, measure, this.getMeasureValue(stationData.measures, measure));
                     }
-
-                    if (measure === 'rain') {
-                        let startOfDay = moment().startOf('day');
-                        if (startOfDay.add(15, 'minutes').isBefore(moment())) {
-                            let rainToday = await this.getRainToday(stationData.measures, stationid, token);
-                            if (rainToday == null) {
-                                await this.sleep(1000);
-                                rainToday = await this.getRainToday(stationData.measures, stationid, token);
-                            }
-                            if (rainToday != null) {
-                                await this.saveMeasure(id, 'rain_today', rainToday);
-                                logger.debug(`Saved rain_today for station: ${id}`);
-                                await this.saveMeasure(id, 'lastUpdated.rain_today', moment().valueOf());
-                            }
-                        } else {
-                            logger.debug('Not getting rain today, because it is start of a new day');
-                        }
-                        let rainYesterday = await this.getRainYesterday(stationData.measures, stationid, token);
-                        if (rainYesterday == null) {
-                            await this.sleep(1000);
-                            rainYesterday = await this.getRainYesterday(stationData.measures, stationid, token);
-                        }
-                        if (rainYesterday != null) {
-                            await this.saveMeasure(id, 'rain_yesterday', rainYesterday);
-                            logger.debug(`Saved rain_yesterday for station: ${id}`);
-                            await this.saveMeasure(id, 'lastUpdated.rain_yesterday', moment().valueOf());
-                        }
-                        let rainLastHour = await this.getRainLastHour(stationData.measures, stationid, token);
-                        if (rainLastHour == null) {
-                            await this.sleep(1000);
-                            rainLastHour = await this.getRainLastHour(stationData.measures, stationid, token);
-                        }
-                        if (rainLastHour != null) {
-                            await this.saveMeasure(id, 'rain_lastHour', rainLastHour);
-                            logger.debug(`Saved rain_lastHour for station: ${id}`);
-                            await this.saveMeasure(id, 'lastUpdated.rain_lastHour', moment().valueOf());
-                        }
+                    savedMeasurements++;
+                }
+            }
+            if (!savedMeasurements) {
+                throw new Error(`No valid measurements for station ${stationid}`);
+            }
+            if (this.hasMeasure(stationData.measures, 'rain')) {
+                let startOfDay = moment().startOf('day');
+                if (startOfDay.add(15, 'minutes').isBefore(moment())) {
+                    let rainToday = await this.getRainToday(stationData.measures, stationid, token);
+                    if (rainToday == null) {
+                        await this.sleep(1000);
+                        rainToday = await this.getRainToday(stationData.measures, stationid, token);
                     }
+                    if (rainToday != null) {
+                        await this.saveMeasure(id, 'rain_today', rainToday);
+                        this.log.debug(`Saved rain_today for station: ${id}`);
+                        await this.saveMeasure(id, 'lastUpdated.rain_today', moment().valueOf());
+                    }
+                } else {
+                    this.log.debug('Not getting rain today, because it is start of a new day');
+                }
+                let rainYesterday = await this.getRainYesterday(stationData.measures, stationid, token);
+                if (rainYesterday == null) {
+                    await this.sleep(1000);
+                    rainYesterday = await this.getRainYesterday(stationData.measures, stationid, token);
+                }
+                if (rainYesterday != null) {
+                    await this.saveMeasure(id, 'rain_yesterday', rainYesterday);
+                    this.log.debug(`Saved rain_yesterday for station: ${id}`);
+                    await this.saveMeasure(id, 'lastUpdated.rain_yesterday', moment().valueOf());
+                }
+                let rainLastHour = await this.getRainLastHour(stationData.measures, stationid, token);
+                if (rainLastHour == null) {
+                    await this.sleep(1000);
+                    rainLastHour = await this.getRainLastHour(stationData.measures, stationid, token);
+                }
+                if (rainLastHour != null) {
+                    await this.saveMeasure(id, 'rain_lastHour', rainLastHour);
+                    this.log.debug(`Saved rain_lastHour for station: ${id}`);
+                    await this.saveMeasure(id, 'lastUpdated.rain_lastHour', moment().valueOf());
                 }
             }
         } else {
@@ -193,14 +240,15 @@ class NetatmoCrawler extends utils.Adapter {
 
     async saveStationData(id, stationData) {
         await this.saveMeasure(id, 'info.stationId', stationData['_id']);
-        await this.saveMeasure(id, 'info.city', stationData['place']['city']);
-        await this.saveMeasure(id, 'info.country', stationData['place']['country']);
-        await this.saveMeasure(id, 'info.street', stationData['place']['street']);
+        await this.saveMeasure(id, 'info.city', stationData.place?.city);
+        await this.saveMeasure(id, 'info.country', stationData.place?.country);
+        await this.saveMeasure(id, 'info.street', stationData.place?.street);
         await this.saveMeasure(id, 'info.lastInfoRetrieved', moment().valueOf());
     }
 
     async saveMeasure(id, measureName, measureValue) {
-        if (measureValue !== null) {
+        this.client.checkRunning();
+        if (measureValue !== null && measureValue !== undefined) {
             const stateName = `stationData.${id}.${measureName}`;
             let roundValue = false;
             switch (measureName) {
@@ -235,6 +283,9 @@ class NetatmoCrawler extends utils.Adapter {
                 case 'windangle':
                     await this.createOwnState(stateName, null, 'string', 'weather.direction.wind ');
                     break;
+                case 'windangleDegrees':
+                    await this.createOwnState(stateName, '°', 'number', 'value.direction.wind');
+                    break;
                 case 'windstrength':
                     await this.createOwnState(stateName, 'km/h', 'number', 'value.speed.wind');
                     roundValue = true;
@@ -267,20 +318,23 @@ class NetatmoCrawler extends utils.Adapter {
             if (roundValue) {
                 measureValue = this.roundValue(measureValue);
             }
+            this.client.checkRunning();
             await this.setStateAsync(stateName, measureValue, true);
         }
     }
 
     async saveTimestamp(id, measureName, timestamp) {
-        if (timestamp !== null) {
+        if (timestamp != null && Number.isFinite(Number(timestamp))) {
             const stateName = `stationData.${id}.lastUpdated.${measureName}`;
             await this.createOwnState(stateName, null, 'number', 'date');
             timestamp = Number.parseInt(timestamp) * 1000;
+            this.client.checkRunning();
             await this.setStateAsync(stateName, timestamp, true);
         }
     }
 
     async createOwnState(stateName, unit, type, role) {
+        this.client.checkRunning();
         await this.setObjectNotExistsAsync(stateName, {
             type: 'state',
             common: {
@@ -296,118 +350,84 @@ class NetatmoCrawler extends utils.Adapter {
     }
 
     getStationId(u) {
-        const queryParams = url.parse(u, true).query;
-        const stationId = queryParams['stationid'];
-        return stationId;
+        return new URL(u).searchParams.get('stationid');
     }
 
     async saveState(name, value) {
         await this.createOwnState(name, null, 'string', 'text');
+        this.client.checkRunning();
         await this.setStateAsync(name, value, true);
     }
 
-    getAuthorizationToken(adapter) {
-        // eslint-disable-next-line no-async-promise-executor
-        return new Promise(async (res, rej) => {
-            const tokenState = 'common.authorisationToken';
-            logger.debug('Trying to get token from state');
-            let token = await adapter.getStateAsync(tokenState);
-            let foundToken = false;
-            if (token && null !== token.val) {
-                const now = new Date().getTime();
-                if (now < token.ts + 86400 * 1000) {
-                    //logger.debug('Token is fresh, using it. Now:' + now + ' Token Timestamp: ' + token.ts + ' Token calculated: ' + (token.ts + 86400 * 1000));
-                    foundToken = true;
-                    res(token.val);
-                }
+    async getAuthorizationToken(force = false) {
+        this.client.checkRunning();
+        const tokenState = 'common.authorisationToken';
+        if (!force) {
+            const cached = await this.getStateAsync(tokenState);
+            if (typeof cached?.val === 'string' && cached.val && Date.now() < cached.ts + 86400000) {
+                this.token = cached.val;
+                return this.token;
             }
-            if (!foundToken) {
-                logger.debug('Found no token in state, going to get it from website');
-                request(
-                    {
-                        url: 'https://auth.netatmo.com/weathermap/token',
-                        headers: {
-                            'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8,en-US;q=0.7',
-                            'User-Agent': 'Mozilla/5.0',
-                        },
-                        rejectUnauthorized: false,
-                    },
-
-                    async function (error, response, body) {
-                        if (error) {
-                            rej(error);
-                        }
-                        //logger.debug('Body:' + body);
-
-                        if (!body) {
-                            await adapter.saveState(tokenState, null);
-                            rej('No body for authorization token found.');
-                        }
-                        try {
-                            logger.debug(`Body:${body}`);
-                            const innerBody = JSON.parse(body);
-                            if (innerBody && innerBody.body) {
-                                const token = `Bearer ${innerBody.body}`;
-                                logger.debug(`Token:${token}`);
-                                await adapter.saveState(tokenState, token);
-                                res(token);
-                            } else {
-                                rej('No authorization token found');
-                            }
-                        } catch (e) {
-                            rej(`Could not load page to get authorization token: ${e}`);
-                        }
-                    },
-                );
-            }
+        }
+        const { body } = await this.client.send({
+            url: 'https://auth.netatmo.com/weathermap/token',
+            headers: { 'Accept-Language': 'de-DE,de;q=0.9,en;q=0.8,en-US;q=0.7', 'User-Agent': 'Mozilla/5.0' },
         });
+        const data = typeof body === 'string' ? JSON.parse(body) : body;
+        if (typeof data?.body !== 'string' || !data.body) {
+            throw new Error('No authorization token found');
+        }
+        this.token = `Bearer ${data.body}`;
+        await this.saveState(tokenState, this.token);
+        return this.token;
     }
 
-    getPublicData(stationId, token) {
-        return new Promise((res, rej) => {
-            logger.info(`Getting data for stationid:${stationId}`);
-            request.post(
+    async apiRequest(endpoint, payload, token) {
+        for (;;) {
+            this.client.checkRunning();
+            if (this.tokenRefreshAttempted && !this.token) {
+                throw new Error('No valid access token after refresh attempt');
+            }
+            const { body, statusCode } = await this.client.send(
                 {
-                    url: 'https://app.netatmo.net/api/getpublicmeasure',
-                    rejectUnauthorized: false,
-                    headers: {
-                        Authorization: token,
-                    },
-                    json: {
-                        device_id: stationId,
-                    },
+                    method: 'POST',
+                    url: `https://app.netatmo.net/api/${endpoint}`,
+                    headers: { Authorization: this.token || token },
+                    json: payload,
                 },
-                async function (error, response, body) {
-                    if (error) {
-                        rej(error);
-                    }
-                    if (body && body.body) {
-                        logger.debug(`Body:${JSON.stringify(body.body)}`);
-
-                        //console.log('Body:' + JSON.stringify(responseBody, null, 4));
-                        try {
-                            res(body.body[0]);
-                        } catch (e) {
-                            logger.warn(`Could not get Data for station ${stationId}: ${e}`);
-                            res('');
-                        }
-                        //res(body)
-                    } else {
-                        logger.info(`No body:${JSON.stringify(body)}`);
-                        if (body && body.error && body.error.code === 2) {
-                            logger.debug('Accesstoken is invalid. Going to reset state');
-                            await myAdapter.saveState('common.authorisationToken', null);
-                        }
-                        res('');
-                    }
-                },
+                true,
             );
-        });
+            if (statusCode === 401 || body?.error?.code === 2) {
+                this.token = null;
+                await this.saveState('common.authorisationToken', null);
+                if (this.tokenRefreshAttempted) {
+                    throw new Error('Invalid access token after refresh attempt');
+                }
+                this.tokenRefreshAttempted = true;
+                this.log.info('Access token invalid; refreshing once for this run');
+                await this.getAuthorizationToken(true);
+                continue;
+            }
+            if (statusCode < 200 || statusCode >= 300) {
+                throw new Error(`Netatmo HTTP ${statusCode}`);
+            }
+            if (body?.error) {
+                throw new Error(`Netatmo API error ${body.error.code}`);
+            }
+            return body?.body;
+        }
+    }
+
+    async getPublicData(stationId, token) {
+        this.log.info(`Getting data for stationid:${stationId}`);
+        const body = await this.apiRequest('getpublicmeasure', { device_id: stationId }, token);
+        this.log.debug(`Body:${JSON.stringify(body)}`);
+        return Array.isArray(body) ? body[0] : null;
     }
 
     hasMeasure(measures, measureName) {
         let measureKey = Object.keys(measures).filter(key => {
-            return measures[key].type.indexOf(measureName) !== -1;
+            return Array.isArray(measures[key]?.type) && measures[key].type.includes(measureName);
         });
         if (Array.isArray(measureKey) && measureKey.length > 0) {
             return true;
@@ -417,188 +437,74 @@ class NetatmoCrawler extends utils.Adapter {
 
     getMeasureValue(measures, measureName) {
         let measureKey = Object.keys(measures).filter(key => {
-            return measures[key].type.indexOf(measureName) !== -1;
+            return Array.isArray(measures[key]?.type) && measures[key].type.includes(measureName);
         });
         if (Array.isArray(measureKey) && measureKey.length > 0) {
             let measureIndex = measures[measureKey[0]].type.indexOf(measureName);
-            const measureValues = measures[measureKey[0]].res[Object.keys(measures[measureKey[0]].res)[0]];
-            const measureValue = measureValues[measureIndex];
-            return measureValue;
+            const results = measures[measureKey[0]].res || {};
+            const measureValues = results[Object.keys(results)[0]];
+            const measureValue = measureValues?.[measureIndex];
+            return typeof measureValue === 'number' && Number.isFinite(measureValue) ? measureValue : null;
         }
         return null;
     }
 
     getMeasureTimestamp(measures, measureName) {
         let measureKey = Object.keys(measures).filter(key => {
-            return measures[key].type.indexOf(measureName) !== -1;
+            return Array.isArray(measures[key]?.type) && measures[key].type.includes(measureName);
         });
 
         if (Array.isArray(measureKey) && measureKey.length > 0) {
-            let res = measures[measureKey[0]].res;
+            let res = measures[measureKey[0]].res || {};
             let timeStamp = Object.keys(res)[0];
             return timeStamp;
         }
         return null;
     }
 
+    async getRainValue(measures, stationId, token, scale, start, end) {
+        const moduleId = Object.keys(measures).find(key => measures[key]?.type?.includes('rain'));
+        if (!moduleId) {
+            return null;
+        }
+        const payload = {
+            device_id: stationId,
+            module_id: moduleId,
+            scale,
+            type: 'sum_rain',
+            real_time: true,
+            date_begin: start.toString(),
+            ...(end === undefined ? {} : { date_end: end.toString() }),
+        };
+        const body = await this.apiRequest('getmeasure', payload, token);
+        const value = body?.[0]?.value?.[0]?.[0];
+        return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    }
+
     getRainToday(measures, stationId, token) {
-        return new Promise((res, rej) => {
-            //console.log('Getting data for stationid:' + stationId);
-            var start = moment().startOf('day').unix();
-            const moduleId = Object.keys(measures).filter(key => {
-                return measures[key].type.indexOf('rain') !== -1;
-            })[0];
-            const inputObj = {
-                device_id: stationId,
-                module_id: moduleId,
-                scale: '1day',
-                type: 'sum_rain',
-                real_time: true,
-                date_begin: start.toString(),
-            };
-            //console.log('InputObj:' + JSON.stringify(inputObj));
-            request.post(
-                {
-                    url: 'https://app.netatmo.net/api/getmeasure',
-                    rejectUnauthorized: false,
-                    headers: {
-                        Authorization: token,
-                    },
-                    json: inputObj,
-                },
-                async function (error, response, body) {
-                    if (error) {
-                        rej(error);
-                    }
-                    logger.debug(`Body Rain_Today:${JSON.stringify(body)}`);
-                    if (body && body.body) {
-                        if (!body.body[0] || !body.body[0].value) {
-                            logger.debug(`No rain today value for Station ${stationId}`);
-                            res('');
-                        }
-                        //console.log('Body:' + JSON.stringify(responseBody, null, 4));
-                        try {
-                            const rainToday = body.body[0].value[0][0];
-                            logger.debug(`Rain Today for Station ${stationId} is: ${rainToday}`);
-                            res(rainToday);
-                        } catch (e) {
-                            logger.info(`Could not get Rain Today for station ${stationId}: ${e}`);
-                            res('');
-                        }
-                        //res(body)
-                    } else {
-                        logger.info(`No body in Rain_Today:${JSON.stringify(body)}`);
-                        res('');
-                    }
-                },
-            );
-        });
+        return this.getRainValue(measures, stationId, token, '1day', moment().startOf('day').unix());
     }
 
     getRainYesterday(measures, stationId, token) {
-        return new Promise((res, rej) => {
-            //console.log('Getting data for stationid:' + stationId);
-            var start = moment().subtract(1, 'days').startOf('day').unix();
-            var end = moment().subtract(1, 'days').endOf('day').unix();
-            const moduleId = Object.keys(measures).filter(key => {
-                return measures[key].type.indexOf('rain') !== -1;
-            })[0];
-            const inputObj = {
-                device_id: stationId,
-                module_id: moduleId,
-                scale: '1day',
-                type: 'sum_rain',
-                real_time: true,
-                date_begin: start.toString(),
-                date_end: end.toString(),
-            };
-            //console.log('InputObj:' + JSON.stringify(inputObj));
-            request.post(
-                {
-                    url: 'https://app.netatmo.net/api/getmeasure',
-                    rejectUnauthorized: false,
-                    headers: {
-                        Authorization: token,
-                    },
-                    json: inputObj,
-                },
-                async function (error, response, body) {
-                    if (error) {
-                        rej(error);
-                    }
-                    if (body && body.body) {
-                        logger.debug(`Body Rain_Yesterday:${JSON.stringify(body.body)}`);
-
-                        //console.log('Body:' + JSON.stringify(responseBody, null, 4));
-                        try {
-                            const rainYesterday = body.body[0].value[0][0];
-                            logger.debug(`Rain Yesterday for Station ${stationId} is: ${rainYesterday}`);
-                            res(rainYesterday);
-                        } catch (e) {
-                            logger.info(`Could not get Rain Yesterday for station ${stationId}: ${e}`);
-                            res('');
-                        }
-                        //res(body)
-                    } else {
-                        logger.info(`No body in Rain_Yesterday:${JSON.stringify(body)}`);
-                        res('');
-                    }
-                },
-            );
-        });
+        return this.getRainValue(
+            measures,
+            stationId,
+            token,
+            '1day',
+            moment().subtract(1, 'days').startOf('day').unix(),
+            moment().subtract(1, 'days').endOf('day').unix(),
+        );
     }
 
     getRainLastHour(measures, stationId, token) {
-        return new Promise((res, rej) => {
-            //console.log('Getting data for stationid:' + stationId);
-            var start = moment().subtract(1, 'hour').unix();
-            var end = moment().unix();
-            const moduleId = Object.keys(measures).filter(key => {
-                return measures[key].type.indexOf('rain') !== -1;
-            })[0];
-            const inputObj = {
-                device_id: stationId,
-                module_id: moduleId,
-                scale: '1hour',
-                type: 'sum_rain',
-                real_time: true,
-                date_begin: start.toString(),
-                date_end: end.toString(),
-            };
-            //console.log('InputObj:' + JSON.stringify(inputObj));
-            request.post(
-                {
-                    url: 'https://app.netatmo.net/api/getmeasure',
-                    rejectUnauthorized: false,
-                    headers: {
-                        Authorization: token,
-                    },
-                    json: inputObj,
-                },
-                async function (error, response, body) {
-                    if (error) {
-                        rej(error);
-                    }
-                    if (body && body.body) {
-                        logger.debug(`Body Rain_LastHour:${JSON.stringify(body.body)}`);
-
-                        //console.log('Body:' + JSON.stringify(responseBody, null, 4));
-                        try {
-                            const rainLastHour = body.body[0].value[0][0];
-                            logger.debug(`Rain Last Hour for Station ${stationId} is: ${rainLastHour}`);
-                            res(rainLastHour);
-                        } catch (e) {
-                            logger.info(`Could not get Rain LastHour for station ${stationId}: ${e}`);
-                            res('');
-                        }
-                        //res(body)
-                    } else {
-                        logger.info(`No body in Rain_LastHour:${JSON.stringify(body)}`);
-                        res('');
-                    }
-                },
-            );
-        });
+        return this.getRainValue(
+            measures,
+            stationId,
+            token,
+            '1hour',
+            moment().subtract(1, 'hour').unix(),
+            moment().unix(),
+        );
     }
 
     getWindrichtungsName(value) {
@@ -633,14 +539,12 @@ class NetatmoCrawler extends utils.Adapter {
     }
 
     sleep(ms) {
-        return new Promise(resolve => {
-            setTimeout(resolve, ms);
-        });
+        return this.client.sleep(ms);
     }
 
     roundValue(val) {
         const roundedVal = Math.round(val * 100) / 100;
-        logger.debug(`Rounded value ${val} to ${roundedVal}`);
+        this.log.debug(`Rounded value ${val} to ${roundedVal}`);
         return roundedVal;
     }
 }
@@ -649,7 +553,7 @@ class NetatmoCrawler extends utils.Adapter {
 if (module.parent) {
     // Export the constructor in compact mode
     /**
-     * @param {Partial<utils.AdapterOptions>} [options]
+     * @param {Partial<utils.AdapterOptions>} [options] Adapter startup options.
      */
     module.exports = options => new NetatmoCrawler(options);
 } else {
