@@ -11,7 +11,7 @@ const utils = require('@iobroker/adapter-core');
 const url = require('node:url');
 const moment = require('moment');
 const request = require('request');
-const { RequestClient, describeError } = require('./lib/request-client');
+const { RequestClient, describeError, isNetworkError } = require('./lib/request-client');
 // const { Adapter } = require('@iobroker/adapter-core');
 
 // Load your modules here, e.g.:
@@ -82,8 +82,16 @@ class NetatmoCrawler extends utils.Adapter {
             if (this.client.stopped) {
                 return;
             }
-            this.log.error(`Netatmo run failed: ${describeError(error)}`);
-            this.terminate ? this.terminate('Netatmo run failed; no complete update', 15) : process.exit(15);
+            const networkError = isNetworkError(error);
+            if (networkError) {
+                this.log.warn(`Could not retrieve new Netatmo data due to a network problem: ${describeError(error)}`);
+            } else {
+                this.log.error(`Netatmo run failed: ${describeError(error)}`);
+            }
+            const exitCode = networkError ? 0 : 15;
+            this.terminate
+                ? this.terminate('Netatmo run failed; no complete update', exitCode)
+                : process.exit(exitCode);
         }
     }
 

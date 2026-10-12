@@ -120,6 +120,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 ### **WORK IN PROGRESS**
 - (xXBJXx) Fixed missing station data when optional location fields are absent ([#198](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/198), [#94](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/94); related: [#84](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/84)).
 - (xXBJXx) Fixed token renewal, request timeouts and cancellation when disabling the instance.
+- (xXBJXx) Handled expected network failures as warnings with exit code 0, incorporating [#191](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/191) ([#57](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/57)).
 - (xXBJXx) Preserved weather readings when rain history is unavailable.
 
 ### 1.2.0 (2026-05-10)

@@ -81,6 +81,57 @@ function success(o) {
 }
 
 describe('Netatmo regression tests', () => {
+    for (const code of [
+        'ECONNABORTED',
+        'ECONNREFUSED',
+        'ECONNRESET',
+        'EHOSTUNREACH',
+        'ENETDOWN',
+        'ENETUNREACH',
+        'ENOTFOUND',
+        'EAI_AGAIN',
+        'ESOCKETTIMEDOUT',
+        'ETIMEDOUT',
+    ]) {
+        it(`warns and exits normally for ${code} during token retrieval`, async () => {
+            const t = setup(() => Object.assign(new Error('network failure'), { code }));
+            t.adapter.getStateAsync = async () => null;
+            await t.adapter.onReady();
+            assert.equal(t.adapter.exit.code, 0);
+            assert(t.logs.some(l => l.level === 'warn' && l.text.includes(code)));
+            assert(!t.logs.some(l => l.level === 'error'));
+            assert.equal(t.requests.length, 1);
+        });
+    }
+    it('treats its own token request deadline as an expected network failure', async () => {
+        const t = setup(() => 'hang');
+        t.adapter.getStateAsync = async () => null;
+        t.adapter.client.timeout = 10;
+        await t.adapter.onReady();
+        assert.equal(t.adapter.exit.code, 0);
+        assert(t.handles[0].aborted);
+        assert(t.logs.some(l => l.level === 'warn' && l.text.includes('ETIMEDOUT')));
+        assert(!t.logs.some(l => l.level === 'error'));
+    });
+    it('handles aggregated connection failures without hiding mixed programming errors', async () => {
+        const network = Object.assign(new Error('connect'), { code: 'ECONNREFUSED' });
+        for (const [error, exitCode] of [
+            [new AggregateError([network]), 0],
+            [new AggregateError([network, new TypeError('bug')]), 15],
+            [new AggregateError([]), 15],
+            [new TypeError('unexpected response'), 15],
+            [Object.assign(new Error('unknown'), { code: 'UNKNOWN' }), 15],
+        ]) {
+            const t = setup(() => error);
+            t.adapter.getStateAsync = async () => null;
+            await t.adapter.onReady();
+            assert.equal(t.adapter.exit.code, exitCode);
+            assert.equal(
+                t.logs.some(l => l.level === 'error'),
+                exitCode !== 0,
+            );
+        }
+    });
     it('cancels an in-flight scheduled run when the instance is disabled', async () => {
         const t = setup(() => 'hang');
         const run = t.adapter.onReady();
