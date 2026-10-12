@@ -1,0 +1,7 @@
+{
+  "netatmo-crawler adapter settings": "Ustawienia adaptera dla robota sieciowego Netatmo",
+  "stationNameType": "Wybierz, jak mają być nazywane obiekty dla każdej stacji",
+  "stationNameTypeCounter": "Użyj licznika, np. 1",
+  "stationNameTypeId": "Użyj identyfikatora stacji, np. 70: 3f: ee: 7c: 37: 6c",
+  "stationUrls": "Wpisz adresy URL stacji. Możesz wprowadzić wiele stacji. Jeden na linię"
+}

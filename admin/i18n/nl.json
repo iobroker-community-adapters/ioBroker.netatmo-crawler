@@ -1,0 +1,7 @@
+{
+  "netatmo-crawler adapter settings": "Adapterinstellingen voor netatmo-crawler",
+  "stationNameType": "Selecteer hoe de objecten voor elk station een naam moeten krijgen",
+  "stationNameTypeCounter": "Gebruik teller, b.v. 1",
+  "stationNameTypeId": "Gebruik de id van het station, b.v. 70: 3f: ee: 7c: 37: 6c",
+  "stationUrls": "Voer de URL's van de stations in. U kunt meerdere stations invoeren. Een per regel"
+}

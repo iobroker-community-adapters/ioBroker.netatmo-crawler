@@ -1,0 +1,7 @@
+{
+  "netatmo-crawler adapter settings": "netatmo-crawler的适配器设置",
+  "stationNameType": "选择每个工作站的对象应如何命名",
+  "stationNameTypeCounter": "使用计数器，例如1个",
+  "stationNameTypeId": "使用电台的ID，例如70：3f：ee：7c：37：6c",
+  "stationUrls": "输入工作站的URL。您可以输入多个电台。每行一个"
+}

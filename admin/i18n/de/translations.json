@@ -1,7 +1,0 @@
-{
-    "netatmo-crawler adapter settings": "Adaptereinstellungen für Netatmo-Crawler",
-    "stationNameType": "Wählen Sie aus, wie die Objekte für jede Station benannt werden sollen",
-    "stationNameTypeCounter": "Zähler verwenden, z.B. 1",
-    "stationNameTypeId": "Verwenden Sie die ID der Station, z.B. 70: 3f: ee: 7c: 37: 6c",
-    "stationUrls": "Geben Sie die URLs für die Stationen ein. Sie können mehrere Stationen eingeben. Eine pro Zeile"
-}

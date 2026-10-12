@@ -1,0 +1,35 @@
+{
+  "type": "panel",
+  "i18n": true,
+  "items": {
+    "stationUrls": {
+      "type": "text",
+      "label": "stationUrls",
+      "minRows": 3,
+      "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12
+    },
+    "stationNameType": {
+      "type": "select",
+      "label": "stationNameType",
+      "options": [
+        {
+          "label": "stationNameTypeCounter",
+          "value": "counter"
+        },
+        {
+          "label": "stationNameTypeId",
+          "value": "id"
+        }
+      ],
+      "xs": 12,
+      "sm": 12,
+      "md": 6,
+      "lg": 6,
+      "xl": 4
+    }
+  }
+}

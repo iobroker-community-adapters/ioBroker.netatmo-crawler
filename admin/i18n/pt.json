@@ -1,0 +1,7 @@
+{
+  "netatmo-crawler adapter settings": "Configurações do adaptador para netatmo-crawler",
+  "stationNameType": "Selecione como os objetos para cada estação devem nomear",
+  "stationNameTypeCounter": "Use o contador, p. 1",
+  "stationNameTypeId": "Use o ID da estação, por exemplo 70: 3f: ee: 7c: 37: 6c",
+  "stationUrls": "Digite os URLs para as estações. Você pode inserir várias estações. Um por linha"
+}
