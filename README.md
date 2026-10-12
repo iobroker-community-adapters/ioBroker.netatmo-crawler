@@ -119,7 +119,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 	Placeholder for the next version (at the beginning of the line):
 	### **WORK IN PROGRESS**
 -->
-### **WORK IN PROGRESS**
+### 1.3.0 (2026-10-12)
 - (xXBJXx) Updated Moment and translation-tool dependencies ([#211](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/211), [#212](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/212)).
 - (xXBJXx) Added numeric wind direction and its measurement timestamp while retaining the existing compass direction ([#43](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/43)).
 - (xXBJXx) Migrated settings to jsonConfig, preserved existing configuration and translations, and added responsive field widths and spacing below the Admin toolbar ([#174](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/174), [#213](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/213); supersedes [#221](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/221)).
@@ -148,9 +148,6 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 
 ### 0.8.0
 * (Bart19) Adds additional 'rain_lastHour' state as 'rain' state is now real time value
-
-### 0.7.1
-* (Bart19) removed old news (#17)
 
 [Older changelogs can be found there](CHANGELOG_OLD.md)
 

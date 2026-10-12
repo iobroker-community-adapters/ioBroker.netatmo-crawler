@@ -1,4 +1,8 @@
 # Older Changelogs
+## 0.7.1
+* (Bart19) removed old news (#17)
+
+
 ## 0.7.0
 * (Bart19) saves states as read-only (#23)
 
