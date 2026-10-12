@@ -1,0 +1,114 @@
+[
+    {
+        "_id": "synthetic-1",
+        "place": {
+            "city": "Test city 1",
+            "country": "DE"
+        },
+        "mark": 10,
+        "measures": {
+            "module-0": {
+                "res": {
+                    "1791818003": [18.6, 53]
+                },
+                "type": ["temperature", "humidity"]
+            },
+            "module-1": {
+                "res": {
+                    "1791818043": [1025.8]
+                },
+                "type": ["pressure"]
+            },
+            "module-2": {
+                "res": {
+                    "1791818042": [0]
+                },
+                "type": ["rain"]
+            }
+        }
+    },
+    {
+        "_id": "synthetic-2",
+        "place": {
+            "city": "Test city 2",
+            "country": "DE"
+        },
+        "mark": 10,
+        "measures": {
+            "module-0": {
+                "res": {
+                    "1791818062": [13.7, 59]
+                },
+                "type": ["temperature", "humidity"]
+            },
+            "module-1": {
+                "res": {
+                    "1791818069": [1019.7]
+                },
+                "type": ["pressure"]
+            }
+        }
+    },
+    {
+        "_id": "synthetic-3",
+        "place": {
+            "city": "Test city 3",
+            "country": "DE"
+        },
+        "mark": 10,
+        "measures": {
+            "module-0": {
+                "res": {
+                    "1791818405": [12.3, 62]
+                },
+                "type": ["temperature", "humidity"]
+            },
+            "module-1": {
+                "res": {
+                    "1791818445": [1021.7]
+                },
+                "type": ["pressure"]
+            },
+            "module-2": {
+                "res": {
+                    "1791818437": [0]
+                },
+                "type": ["rain"]
+            },
+            "module-3": {
+                "res": {
+                    "1791818443": [77, 9, 73, 3]
+                },
+                "type": ["gustangle", "guststrength", "windangle", "windstrength"]
+            }
+        }
+    },
+    {
+        "_id": "synthetic-4",
+        "place": {
+            "city": "Test city 4",
+            "country": "DE"
+        },
+        "mark": 10,
+        "measures": {
+            "module-0": {
+                "res": {
+                    "1791817871": [17.5, 47]
+                },
+                "type": ["temperature", "humidity"]
+            },
+            "module-1": {
+                "res": {
+                    "1791817900": [1018.8]
+                },
+                "type": ["pressure"]
+            },
+            "module-2": {
+                "res": {
+                    "1791817891": [0]
+                },
+                "type": ["rain"]
+            }
+        }
+    }
+]
