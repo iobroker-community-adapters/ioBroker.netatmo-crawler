@@ -8,6 +8,10 @@
       "minRows": 4,
       "trim": false,
       "xs": 12,
+      "sm": 12,
+      "md": 12,
+      "lg": 12,
+      "xl": 12,
       "style": {
         "marginTop": 56
       }
@@ -16,7 +20,10 @@
       "type": "select",
       "label": "stationNameType",
       "xs": 12,
+      "sm": 12,
       "md": 6,
+      "lg": 6,
+      "xl": 6,
       "options": [
         {
           "value": "counter",

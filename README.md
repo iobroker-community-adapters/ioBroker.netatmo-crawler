@@ -121,7 +121,7 @@ Many thanks to [backfisch](https://github.com/backfisch88) for the initial idea 
 -->
 ### **WORK IN PROGRESS**
 - (xXBJXx) Added numeric wind direction and its measurement timestamp while retaining the existing compass direction ([#43](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/43)).
-- (xXBJXx) Migrated settings to jsonConfig, preserved existing configuration and translations, and added spacing below the Admin toolbar ([#174](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/174), [#213](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/213); supersedes [#221](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/221)).
+- (xXBJXx) Migrated settings to jsonConfig, preserved existing configuration and translations, and added responsive field widths and spacing below the Admin toolbar ([#174](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/174), [#213](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/213); supersedes [#221](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/pull/221)).
 - (xXBJXx) Fixed missing station data when optional location fields are absent ([#198](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/198), [#94](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/94), [#84](https://github.com/iobroker-community-adapters/ioBroker.netatmo-crawler/issues/84)).
 - (xXBJXx) Fixed token renewal, request timeouts and cancellation when disabling the instance.
 - (xXBJXx) Cancelled active requests when station settings change, preventing overlapping scheduled runs after saving.
