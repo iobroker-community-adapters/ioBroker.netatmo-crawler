@@ -59,8 +59,8 @@ class NetatmoCrawler extends utils.Adapter {
         try {
             const instanceId = `system.adapter.${this.namespace}`;
             await this.subscribeForeignObjectsAsync(instanceId);
-            // Scheduled instances are not signalled by the controller when disabled.
-            // Subscribe before reading to cover disabling during startup as well.
+            // Scheduled runs may not receive a stop signal on configuration changes.
+            // Subscribe before reading to cover changes during startup as well.
             this.onInstanceChange(instanceId, await this.getForeignObjectAsync(instanceId));
             this.client.checkRunning();
             const token = stationUrls.length ? await this.getAuthorizationToken() : null;
@@ -97,18 +97,26 @@ class NetatmoCrawler extends utils.Adapter {
     }
 
     /**
-     * Stop a scheduled run when its instance is disabled or deleted.
+     * Stop a scheduled run when disabled, deleted or using outdated station settings.
      *
      * @param {string} id Changed object ID.
      * @param {ioBroker.Object | null | undefined} obj Changed instance configuration.
      */
     onInstanceChange(id, obj) {
-        if (id === `system.adapter.${this.namespace}` && (!obj || obj.common.enabled === false)) {
-            if (this.client.stopped) {
-                return;
-            }
+        if (id !== `system.adapter.${this.namespace}` || this.client.stopped) {
+            return;
+        }
+        const disabled = !obj || obj.common.enabled === false;
+        const changed =
+            obj?.native &&
+            (obj.native.stationUrls !== this.config.stationUrls ||
+                obj.native.stationNameType !== this.config.stationNameType);
+        if (disabled || changed) {
             this.client.stop();
-            this.terminate('Instance disabled; pending requests cancelled', 0);
+            this.terminate(
+                `${disabled ? 'Instance disabled' : 'Station settings changed'}; pending requests cancelled`,
+                0,
+            );
         }
     }
 

@@ -51,7 +51,7 @@ function setup(responder = () => ({ body: [] }), fixtures = stations) {
         }
         async subscribeForeignObjectsAsync() {}
         async getForeignObjectAsync() {
-            return { common: { enabled: true } };
+            return { common: { enabled: true }, native: { ...this.config } };
         }
         async getStateAsync() {
             return { val: 'Bearer old', ts: Date.now() };
@@ -157,6 +157,51 @@ describe('Netatmo regression tests', () => {
         await t.adapter.onReady();
         assert.equal(t.requests.length, 0);
         assert.match(t.adapter.exit.message, /Instance disabled/);
+    });
+    for (const change of [{ stationUrls: 'https://weathermap.netatmo.com/?stationid=new' }, { stationNameType: 'id' }]) {
+        it(`cancels an active run when ${Object.keys(change)[0]} changes and permits the replacement run`, async () => {
+            const t = setup(() => 'hang');
+            const run = t.adapter.onReady();
+            while (!t.handles.length) await new Promise(resolve => setImmediate(resolve));
+            t.adapter.onInstanceChange('system.adapter.netatmo-crawler.0', {
+                common: { enabled: true },
+                native: { ...t.adapter.config, ...change },
+            });
+            await run;
+            assert(t.handles[0].aborted);
+            assert.equal(t.requests.length, 1);
+            assert.equal(t.states.size, 0);
+            assert.equal(t.adapter.exit.code, 0);
+            assert.match(t.adapter.exit.message, /Station settings changed/);
+            const replacement = setup(success);
+            await replacement.adapter.onReady();
+            assert.equal(replacement.adapter.exit.code, 0);
+            assert(replacement.states.size > 0);
+        });
+    }
+    it('does not fetch with configuration that changed during startup', async () => {
+        const t = setup(success);
+        t.adapter.getForeignObjectAsync = async () => ({
+            common: { enabled: true },
+            native: { ...t.adapter.config, stationNameType: 'id' },
+        });
+        await t.adapter.onReady();
+        assert.equal(t.requests.length, 0);
+        assert.match(t.adapter.exit.message, /Station settings changed/);
+    });
+    it('ignores unchanged settings and unrelated metadata updates during a run', async () => {
+        const t = setup(() => 'hang');
+        const run = t.adapter.onReady();
+        while (!t.handles.length) await new Promise(resolve => setImmediate(resolve));
+        t.adapter.onInstanceChange('system.adapter.netatmo-crawler.0', {
+            common: { enabled: true, loglevel: 'debug' },
+            native: { ...t.adapter.config },
+            ts: Date.now(),
+        });
+        assert.equal(t.adapter.client.stopped, false);
+        assert.equal(t.handles[0].aborted, false);
+        t.adapter.onUnload(() => {});
+        await run;
     });
     it('saves all four supplied payload shapes without street, including zero rain and wind', async () => {
         const t = setup(success);
